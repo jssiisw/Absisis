@@ -1,4 +1,4 @@
-name: Kali-Tailscale-Ultra-Fixed
+name: Kali-Tailscale-6Hours-Safe
 
 on: 
   workflow_dispatch:
@@ -13,33 +13,40 @@ jobs:
           
       - name: Connect to Tailscale
         run: |
+          # تأكد أن المفتاح صحيح في GitHub Secrets
           sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
           
-      - name: Setup User and Kali GUI
+      - name: Setup Kali GUI & Fix Permissions
         run: |
           sudo apt update
-          # تثبيت الواجهة الرسومية مع المكتبات المفقودة التي سببت الخطأ في الصورة
-          sudo DEBIAN_FRONTEND=noninteractive apt install -y xfce4 xfce4-goodies xrdp xorg dbus-x11 x11-xserver-utils
+          # تثبيت الواجهة الرسومية مع حزم الاستقرار
+          sudo DEBIAN_FRONTEND=noninteractive apt install -y xfce4 xfce4-goodies xrdp dbus-x11 x11-xserver-utils
           
-          # إنشاء المستخدم وتأمين الصلاحيات
+          # إنشاء المستخدم 'aban' وتحديد كلمة السر
           sudo useradd -m -s /bin/bash aban || true
           echo "aban:abanAWAD500" | sudo chpasswd
           sudo adduser aban sudo || true
           
-          # إعدادات الـ RDP المتقدمة (لمنع خطأ الفشل في الجلسة)
-          echo "xfce4-session" > /home/aban/.xsession
+          # إعدادات الـ RDP - حل مشكلة الـ failsafe والصلاحيات نهائياً
+          sudo touch /home/aban/.xsession
           sudo chown aban:aban /home/aban/.xsession
+          sudo -u aban bash -c 'echo "startxfce4" > /home/aban/.xsession'
           
-          # تعديل إعدادات xrdp للعمل مع dbus
+          # تعديل ملف تشغيل xrdp ليناسب XFCE
           sudo sed -i 's/test -x \/etc\/X11\/Xsession \&\& exec \/etc\/X11\/Xsession/exec startxfce4/g' /etc/xrdp/startwm.sh
           
+          # إعدادات الأمان والتشغيل
+          echo "allowed_users=anybody" | sudo tee /etc/xrdp/Xwrapper.config
           sudo systemctl enable xrdp
           sudo systemctl restart xrdp
 
-      - name: Keep Alive for 6 Hours
+      - name: Keep Alive (6 Hours)
         run: |
-          echo "Your Kali IP is:"
-          tailscale ip -4
-          echo "Connection is ready! Use Username: aban | Password: abanAWAD500"
-          # يبقي الجلسة مفتوحة لمدة 6 ساعات
+          echo "==== بيانات الاتصال ===="
+          echo "IP Address: $(tailscale ip -4)"
+          echo "Username: aban"
+          echo "Password: abanAWAD500"
+          echo "========================"
+          echo "السيرفر شغال الآن.. يمكنك الاتصال. سيغلق تلقائياً بعد 6 ساعات."
+          # البقاء حياً لمدة 6 ساعات
           sleep 21600
