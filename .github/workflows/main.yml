@@ -13,19 +13,29 @@ jobs:
           
       - name: Connect to Tailscale
         run: |
-          # استخدام المفتاح المخفي للاتصال بشبكتك الخاصة
+          # تأكد من إضافة المفتاح في GitHub Secrets باسم TAILSCALE_AUTH_KEY
           sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
           
       - name: Setup Kali GUI & RDP
         run: |
           sudo apt update
           sudo apt install -y xfce4 xfce4-goodies xrdp
-          echo "runneradmin:abanAWAD500" | sudo chpasswd
+          
+          # الجزء الأهم: إنشاء المستخدم وإضافته لمجموعة الـ sudo
+          sudo useradd -m aban
+          sudo adduser aban sudo
+          echo "aban:abanAWAD500" | sudo chpasswd
+          
+          # تغيير المستخدم الافتراضي لـ RDP
+          sudo sed -i 's/allowed_users=console/allowed_users=anybody/' /etc/xrdp/Xwrapper.config
           sudo systemctl enable xrdp
           sudo systemctl start xrdp
-          echo "startxfce4" > ~/.xsession
+          
+          # إعداد واجهة XFCE للمستخدم الجديد
+          echo "startxfce4" > /home/aban/.xsession
+          sudo chown aban:aban /home/aban/.xsession
 
       - name: Get Tailscale IP
         run: |
-          # لعرض عنوان الـ IP الخاص بالجهاز داخل شبكتك
+          echo "Your Kali IP is:"
           tailscale ip -4
