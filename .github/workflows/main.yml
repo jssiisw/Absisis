@@ -13,29 +13,27 @@ jobs:
           
       - name: Connect to Tailscale
         run: |
-          # تأكد من أن المفتاح الجديد يبدأ بـ tskey-auth...
+          # تأكد أن المفتاح في Secrets هو Auth Key يبدأ بـ tskey-auth
           sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
           
       - name: Setup User and Kali GUI
         run: |
           sudo apt update
-          # تثبيت الواجهة وخادم الـ RDP مع التأكد من التثبيت الكامل
-          sudo apt install -y xfce4 xfce4-goodies xrdp
+          # تثبيت الأدوات مع منع الأسئلة التفاعلية لضمان عدم توقف السكربت
+          sudo DEBIAN_FRONTEND=noninteractive apt install -y xfce4 xfce4-goodies xrdp
           
-          # إنشاء المستخدم 'aban'
-          sudo useradd -m -s /bin/bash aban
-          sudo adduser aban sudo
+          # إنشاء المستخدم وتحديد كلمة السر
+          sudo useradd -m -s /bin/bash aban || true
+          sudo adduser aban sudo || true
           echo "aban:abanAWAD500" | sudo chpasswd
           
-          # إعدادات الـ RDP (حل مشكلة الملف المفقود)
-          if [ -f /etc/xrdp/Xwrapper.config ]; then
-              sudo sed -i 's/allowed_users=console/allowed_users=anybody/' /etc/xrdp/Xwrapper.config
-          else
-              echo "allowed_users=anybody" | sudo tee /etc/xrdp/Xwrapper.config
-          fi
+          # إعدادات الـ RDP - حل مشكلة الملفات المفقودة والصلاحيات
+          sudo touch /etc/xrdp/Xwrapper.config
+          echo "allowed_users=anybody" | sudo tee /etc/xrdp/Xwrapper.config
           
-          echo "startxfce4" > /home/aban/.xsession
-          sudo chown aban:aban /home/aban/.xsession
+          # إنشاء ملف الجلسة للمستخدم aban بصلاحيات صحيحة
+          sudo -u aban bash -c 'echo "startxfce4" > /home/aban/.xsession'
+          
           sudo systemctl enable xrdp
           sudo systemctl restart xrdp
 
