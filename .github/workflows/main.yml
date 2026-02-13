@@ -1,4 +1,4 @@
-name: Kali-Tailscale-Final
+name: Kali-Tailscale-Final-Fixed
 
 on: 
   workflow_dispatch:
@@ -13,29 +13,35 @@ jobs:
           
       - name: Connect to Tailscale
         run: |
-          # تأكد من إنشاء مفتاح جديد من إعدادات Tailscale
+          # تأكد من أن المفتاح الجديد يبدأ بـ tskey-auth...
           sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
           
       - name: Setup User and Kali GUI
         run: |
           sudo apt update
+          # تثبيت الواجهة وخادم الـ RDP مع التأكد من التثبيت الكامل
           sudo apt install -y xfce4 xfce4-goodies xrdp
           
-          # إنشاء مستخدم جديد باسم aban لضمان عدم حدوث خطأ pam_chauthtok
+          # إنشاء المستخدم 'aban'
           sudo useradd -m -s /bin/bash aban
           sudo adduser aban sudo
           echo "aban:abanAWAD500" | sudo chpasswd
           
-          # إعدادات الـ RDP
-          sudo sed -i 's/allowed_users=console/allowed_users=anybody/' /etc/xrdp/Xwrapper.config
+          # إعدادات الـ RDP (حل مشكلة الملف المفقود)
+          if [ -f /etc/xrdp/Xwrapper.config ]; then
+              sudo sed -i 's/allowed_users=console/allowed_users=anybody/' /etc/xrdp/Xwrapper.config
+          else
+              echo "allowed_users=anybody" | sudo tee /etc/xrdp/Xwrapper.config
+          fi
+          
           echo "startxfce4" > /home/aban/.xsession
           sudo chown aban:aban /home/aban/.xsession
           sudo systemctl enable xrdp
-          sudo systemctl start xrdp
+          sudo systemctl restart xrdp
 
       - name: Show Connectivity Info
         run: |
-          echo "1. Connect your phone/PC to Tailscale"
-          echo "2. Use RDP to connect to this IP:"
+          echo "Your Kali IP is:"
           tailscale ip -4
-          echo "3. Username: aban | Password: abanAWAD500"
+          echo "Username: aban"
+          echo "Password: abanAWAD500"
