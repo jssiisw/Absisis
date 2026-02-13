@@ -1,4 +1,4 @@
-name: Kali-Ultimate-Solution
+name: Kali-Ultimate-Solution-v3
 
 on: 
   workflow_dispatch:
@@ -13,35 +13,39 @@ jobs:
           
       - name: Connect to Tailscale
         run: |
+          # تأكد أن المفتاح في Secrets هو Auth Key يبدأ بـ tskey-auth
           sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
           
-      - name: Setup User & Full Desktop
+      - name: Setup User & Fix Desktop Session
         run: |
           sudo apt update
-          # تثبيت الواجهة مع كافة ملحقاتها لضمان عدم نقص أي ملف
+          # تثبيت الواجهة مع حزم الاستقرار الأساسية للـ RDP
           sudo DEBIAN_FRONTEND=noninteractive apt install -y xfce4 xfce4-goodies xrdp dbus-x11 x11-xserver-utils
           
-          # إنشاء المستخدم وتأكيد الصلاحيات
+          # إنشاء المستخدم وتحديد كلمة السر
           sudo useradd -m -s /bin/bash aban || true
           echo "aban:abanAWAD500" | sudo chpasswd
           sudo adduser aban sudo || true
           
-          # الحل الجذري لمشكلة الـ Failsafe (إعادة كتابة ملفات التشغيل)
-          sudo -u aban bash -c 'echo "startxfce4" > ~/.xsession'
+          # الحل النهائي لمشكلة الفشل في الجلسة (Failsafe)
+          # نقوم بمسح أي إعدادات قديمة وإجبار المستخدم على تشغيل xfce
+          sudo rm -f /home/aban/.xsession
+          sudo -u aban bash -c 'echo "exec startxfce4" > ~/.xsession'
+          sudo chmod +x /home/aban/.xsession
           
-          # تعديل ملف الـ xrdp الأساسي ليتجاهل أي أخطاء ويشغل XFCE مباشرة
+          # تعديل ملف تشغيل الـ RDP ليتجاوز الأخطاء ويشغل الواجهة مباشرة
           sudo sed -i 's/^. \/etc\/X11\/Xsession/#. \/etc\/X11\/Xsession/g' /etc/xrdp/startwm.sh
-          echo "startxfce4" | sudo tee -a /etc/xrdp/startwm.sh
+          echo "exec startxfce4" | sudo tee -a /etc/xrdp/startwm.sh
           
-          # تشغيل الخدمات بقوة
+          # إعادة تشغيل الخدمات
           sudo systemctl enable xrdp
           sudo systemctl restart xrdp
 
       - name: Keep Alive (6 Hours)
         run: |
-          echo "==== الكالي جاهز الآن ===="
-          echo "IP: $(tailscale ip -4)"
+          echo "==== السيرفر جاهز يا وحش ===="
+          echo "IP Address: $(tailscale ip -4)"
           echo "User: aban | Pass: abanAWAD500"
-          echo "========================"
-          # بقاء السيرفر حياً لمدة 6 ساعات
+          echo "============================"
+          # السيرفر سيبقى يعمل لمدة 6 ساعات متواصلة
           sleep 21600
