@@ -1,4 +1,4 @@
-name: Kali-Tailscale-Final-Fixed-V2
+name: Kali-Ultimate-Solution
 
 on: 
   workflow_dispatch:
@@ -15,30 +15,33 @@ jobs:
         run: |
           sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
           
-      - name: Setup Kali GUI & Fix Desktop
+      - name: Setup User & Full Desktop
         run: |
           sudo apt update
-          # تثبيت الحد الأدنى المطلوب للواجهة لضمان عدم حدوث تضارب
-          sudo DEBIAN_FRONTEND=noninteractive apt install -y xfce4 xrdp dbus-x11
+          # تثبيت الواجهة مع كافة ملحقاتها لضمان عدم نقص أي ملف
+          sudo DEBIAN_FRONTEND=noninteractive apt install -y xfce4 xfce4-goodies xrdp dbus-x11 x11-xserver-utils
           
-          # إنشاء المستخدم 'aban' وتعيين كلمة السر
+          # إنشاء المستخدم وتأكيد الصلاحيات
           sudo useradd -m -s /bin/bash aban || true
           echo "aban:abanAWAD500" | sudo chpasswd
           sudo adduser aban sudo || true
           
-          # الحل الجذري لمشكلة Failsafe:
-          # حذف أي إعدادات قديمة وإجبار النظام على استخدام XFCE
+          # الحل الجذري لمشكلة الـ Failsafe (إعادة كتابة ملفات التشغيل)
           sudo -u aban bash -c 'echo "startxfce4" > ~/.xsession'
           
-          # تعديل ملف تشغيل الـ RDP ليكون بسيطاً جداً
+          # تعديل ملف الـ xrdp الأساسي ليتجاهل أي أخطاء ويشغل XFCE مباشرة
           sudo sed -i 's/^. \/etc\/X11\/Xsession/#. \/etc\/X11\/Xsession/g' /etc/xrdp/startwm.sh
           echo "startxfce4" | sudo tee -a /etc/xrdp/startwm.sh
           
+          # تشغيل الخدمات بقوة
+          sudo systemctl enable xrdp
           sudo systemctl restart xrdp
 
       - name: Keep Alive (6 Hours)
         run: |
-          echo "Your IP is: $(tailscale ip -4)"
-          echo "Username: aban"
-          echo "Password: abanAWAD500"
+          echo "==== الكالي جاهز الآن ===="
+          echo "IP: $(tailscale ip -4)"
+          echo "User: aban | Pass: abanAWAD500"
+          echo "========================"
+          # بقاء السيرفر حياً لمدة 6 ساعات
           sleep 21600
