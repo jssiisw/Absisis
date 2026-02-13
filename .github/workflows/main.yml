@@ -13,33 +13,31 @@ jobs:
           
       - name: Connect to Tailscale
         run: |
-          # تأكد أن المفتاح في Secrets هو Auth Key يبدأ بـ tskey-auth
           sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
           
       - name: Setup User and Kali GUI
         run: |
           sudo apt update
-          # تثبيت الأدوات مع منع الأسئلة التفاعلية لضمان عدم توقف السكربت
           sudo DEBIAN_FRONTEND=noninteractive apt install -y xfce4 xfce4-goodies xrdp
           
-          # إنشاء المستخدم وتحديد كلمة السر
+          # إنشاء المستخدم
           sudo useradd -m -s /bin/bash aban || true
-          sudo adduser aban sudo || true
           echo "aban:abanAWAD500" | sudo chpasswd
+          sudo adduser aban sudo || true
           
-          # إعدادات الـ RDP - حل مشكلة الملفات المفقودة والصلاحيات
-          sudo touch /etc/xrdp/Xwrapper.config
+          # إعدادات الـ RDP وفتح المنفذ في جدار الحماية
           echo "allowed_users=anybody" | sudo tee /etc/xrdp/Xwrapper.config
+          sudo ufw allow 3389/tcp
           
-          # إنشاء ملف الجلسة للمستخدم aban بصلاحيات صحيحة
+          # إعداد جلسة المستخدم
           sudo -u aban bash -c 'echo "startxfce4" > /home/aban/.xsession'
           
-          sudo systemctl enable xrdp
+          # إعادة تشغيل الخدمة للتأكد من أنها تعمل
           sudo systemctl restart xrdp
+          sleep 5
+          sudo systemctl status xrdp
 
       - name: Show Connectivity Info
         run: |
           echo "Your Kali IP is:"
           tailscale ip -4
-          echo "Username: aban"
-          echo "Password: abanAWAD500"
