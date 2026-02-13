@@ -20,24 +20,23 @@ jobs:
           sudo apt update
           sudo DEBIAN_FRONTEND=noninteractive apt install -y xfce4 xfce4-goodies xrdp
           
-          # إنشاء المستخدم
+          # إنشاء المستخدم وتعيين كلمة السر
           sudo useradd -m -s /bin/bash aban || true
           echo "aban:abanAWAD500" | sudo chpasswd
           sudo adduser aban sudo || true
           
-          # إعدادات الـ RDP وفتح المنفذ في جدار الحماية
+          # إعدادات الـ RDP
           echo "allowed_users=anybody" | sudo tee /etc/xrdp/Xwrapper.config
-          sudo ufw allow 3389/tcp
-          
-          # إعداد جلسة المستخدم
           sudo -u aban bash -c 'echo "startxfce4" > /home/aban/.xsession'
           
-          # إعادة تشغيل الخدمة للتأكد من أنها تعمل
+          # تشغيل الخدمة
+          sudo systemctl enable xrdp
           sudo systemctl restart xrdp
-          sleep 5
-          sudo systemctl status xrdp
 
-      - name: Show Connectivity Info
+      - name: Keep Alive and Show Info
         run: |
           echo "Your Kali IP is:"
           tailscale ip -4
+          echo "The RDP will stay alive for 6 hours..."
+          # هذا الأمر يبقي السيرفر شغال لمدة 6 ساعات (21600 ثانية)
+          sleep 21600
