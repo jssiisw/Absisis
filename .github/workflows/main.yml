@@ -1,4 +1,4 @@
-name: Kali-Tailscale-Final-Fixed
+name: Kali-Tailscale-Ultra-Fixed
 
 on: 
   workflow_dispatch:
@@ -18,25 +18,28 @@ jobs:
       - name: Setup User and Kali GUI
         run: |
           sudo apt update
-          sudo DEBIAN_FRONTEND=noninteractive apt install -y xfce4 xfce4-goodies xrdp
+          # تثبيت الواجهة الرسومية مع المكتبات المفقودة التي سببت الخطأ في الصورة
+          sudo DEBIAN_FRONTEND=noninteractive apt install -y xfce4 xfce4-goodies xrdp xorg dbus-x11 x11-xserver-utils
           
-          # إنشاء المستخدم وتعيين كلمة السر
+          # إنشاء المستخدم وتأمين الصلاحيات
           sudo useradd -m -s /bin/bash aban || true
           echo "aban:abanAWAD500" | sudo chpasswd
           sudo adduser aban sudo || true
           
-          # إعدادات الـ RDP
-          echo "allowed_users=anybody" | sudo tee /etc/xrdp/Xwrapper.config
-          sudo -u aban bash -c 'echo "startxfce4" > /home/aban/.xsession'
+          # إعدادات الـ RDP المتقدمة (لمنع خطأ الفشل في الجلسة)
+          echo "xfce4-session" > /home/aban/.xsession
+          sudo chown aban:aban /home/aban/.xsession
           
-          # تشغيل الخدمة
+          # تعديل إعدادات xrdp للعمل مع dbus
+          sudo sed -i 's/test -x \/etc\/X11\/Xsession \&\& exec \/etc\/X11\/Xsession/exec startxfce4/g' /etc/xrdp/startwm.sh
+          
           sudo systemctl enable xrdp
           sudo systemctl restart xrdp
 
-      - name: Keep Alive and Show Info
+      - name: Keep Alive for 6 Hours
         run: |
           echo "Your Kali IP is:"
           tailscale ip -4
-          echo "The RDP will stay alive for 6 hours..."
-          # هذا الأمر يبقي السيرفر شغال لمدة 6 ساعات (21600 ثانية)
+          echo "Connection is ready! Use Username: aban | Password: abanAWAD500"
+          # يبقي الجلسة مفتوحة لمدة 6 ساعات
           sleep 21600
