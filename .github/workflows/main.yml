@@ -1,33 +1,35 @@
 name: Linux-Tailscale-RDP-Fixed
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
 
-      - name: Install Desktop (Fast & Clean)
+    steps:
+      - name: Update System
+        run: sudo apt update
+
+      - name: Install XFCE + XRDP + Fix Session
         run: |
-          sudo apt-get update
-          # تثبيت الحزم الأساسية فقط لتقليل وقت الانتظار
-          sudo apt-get install -y xfce4 xfce4-goodies xrdp dbus-x11
-          
-      - name: Apply "Windows-Style" Fix to Linux
-        run: |
-          # إنشاء مستخدم 'aban'
+          sudo apt install -y xfce4 xfce4-goodies xrdp dbus-x11
+
+          # إنشاء مستخدم
           sudo useradd -m -s /bin/bash aban || true
-          echo "aban:abanawad100" | sudo chpasswd
+          echo "aban:${{ secrets.RDP_PASSWORD }}" | sudo chpasswd
           sudo usermod -aG sudo aban
-          
-          # الحل الجذري: إجبار النظام على تشغيل واجهة XFCE لهذا المستخدم تحديداً
-          # هذا يعادل إعدادات Registry في الويندوز التي تضمن الدخول المباشر
-          sudo -u aban bash -c 'echo "xfce4-session" > ~/.xsession'
-          
-          # إعطاء صلاحية الدخول للـ RDP بدون تعقيدات الحماية
-          sudo sed -i 's/allowed_users=console/allowed_users=anybody/' /etc/X11/Xwrapper.config
+
+          # ضبط جلسة المستخدم
+          sudo -u aban bash -c 'echo "dbus-launch --exit-with-session startxfce4" > ~/.xsession'
+          sudo chmod +x /home/aban/.xsession
+
+          # تعديل startwm.sh لإجبار XFCE
+          sudo sed -i 's/^test -x/#test -x/' /etc/xrdp/startwm.sh
+          sudo sed -i 's/^exec/#exec/' /etc/xrdp/startwm.sh
+          echo "startxfce4" | sudo tee -a /etc/xrdp/startwm.sh
+
+          sudo systemctl enable xrdp
           sudo systemctl restart xrdp
 
       - name: Deploy Tailscale
@@ -35,9 +37,9 @@ jobs:
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
-      - name: Connection Details
+      - name: Show Connection Info
         run: |
-          echo "--- RDP READY ---"
+          echo "---- RDP READY ----"
           tailscale ip -4
-          echo "User: aban | Pass: abanawad100"
+          echo "User: aban"
           sleep 21600
