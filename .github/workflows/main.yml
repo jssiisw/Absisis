@@ -1,4 +1,4 @@
-name: Linux-Tailscale-RDP
+name: Linux-Tailscale-RDP-Fixed
 
 on: workflow_dispatch
 
@@ -9,22 +9,26 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Desktop and XRDP
+      - name: Install Desktop (Fast & Clean)
         run: |
           sudo apt-get update
+          # تثبيت الحزم الأساسية فقط لتقليل وقت الانتظار
           sudo apt-get install -y xfce4 xfce4-goodies xrdp dbus-x11
-          sudo systemctl restart xrdp
-
-      - name: Create and Configure User aban
+          
+      - name: Apply "Windows-Style" Fix to Linux
         run: |
-          # Create user aban if not exists
+          # إنشاء مستخدم 'aban'
           sudo useradd -m -s /bin/bash aban || true
           echo "aban:abanawad100" | sudo chpasswd
           sudo usermod -aG sudo aban
           
-          # CRITICAL FIX: Configure the desktop session for user 'aban' specifically
-          sudo -u aban bash -c 'echo "exec startxfce4" > ~/.xsession'
-          sudo -u aban bash -c 'chmod +x ~/.xsession'
+          # الحل الجذري: إجبار النظام على تشغيل واجهة XFCE لهذا المستخدم تحديداً
+          # هذا يعادل إعدادات Registry في الويندوز التي تضمن الدخول المباشر
+          sudo -u aban bash -c 'echo "xfce4-session" > ~/.xsession'
+          
+          # إعطاء صلاحية الدخول للـ RDP بدون تعقيدات الحماية
+          sudo sed -i 's/allowed_users=console/allowed_users=anybody/' /etc/X11/Xwrapper.config
+          sudo systemctl restart xrdp
 
       - name: Deploy Tailscale
         uses: tailscale/github-action@v2
@@ -33,7 +37,7 @@ jobs:
 
       - name: Connection Details
         run: |
-          echo "--- SERVER READY ---"
+          echo "--- RDP READY ---"
           tailscale ip -4
           echo "User: aban | Pass: abanawad100"
           sleep 21600
