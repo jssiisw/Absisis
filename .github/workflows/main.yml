@@ -9,25 +9,26 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Desktop Environment (Improved)
+      - name: Install Desktop and XRDP
         run: |
           sudo apt-get update
-          # Installing full xfce4 to avoid session errors
           sudo apt-get install -y xfce4 xfce4-goodies xrdp dbus-x11
-          # Fixing the session loading issue
-          printf "xfce4-session\n" > ~/.xsession
           sudo systemctl restart xrdp
 
-      - name: Create User aban
+      - name: Create and Configure User aban
         run: |
-          sudo useradd -m -s /bin/bash aban
+          # Create user aban if not exists
+          sudo useradd -m -s /bin/bash aban || true
           echo "aban:abanawad100" | sudo chpasswd
           sudo usermod -aG sudo aban
+          
+          # CRITICAL FIX: Configure the desktop session for user 'aban' specifically
+          sudo -u aban bash -c 'echo "exec startxfce4" > ~/.xsession'
+          sudo -u aban bash -c 'chmod +x ~/.xsession'
 
       - name: Deploy Tailscale
         uses: tailscale/github-action@v2
         with:
-          # Make sure your Secret name is exactly: TAILSCALE_AUTHKEY
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
       - name: Connection Details
