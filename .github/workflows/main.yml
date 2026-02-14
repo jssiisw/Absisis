@@ -1,4 +1,4 @@
-name: Linux-Tailscale-RDP-Fixed
+name: Linux-Tailscale-RDP-Stable
 
 on:
   workflow_dispatch:
@@ -11,24 +11,26 @@ jobs:
       - name: Update System
         run: sudo apt update
 
-      - name: Install XFCE + XRDP + Fix Session
+      - name: Install Desktop Environment
         run: |
-          sudo apt install -y xfce4 xfce4-goodies xrdp dbus-x11
+          sudo apt install -y xfce4 xfce4-goodies xrdp dbus-x11 xorgxrdp
 
+      - name: Configure XRDP Properly
+        run: |
           # إنشاء مستخدم
           sudo useradd -m -s /bin/bash aban || true
           echo "aban:${{ secrets.RDP_PASSWORD }}" | sudo chpasswd
           sudo usermod -aG sudo aban
 
-          # ضبط جلسة المستخدم
-          sudo -u aban bash -c 'echo "dbus-launch --exit-with-session startxfce4" > ~/.xsession'
+          # إنشاء جلسة XFCE نظيفة
+          sudo -u aban bash -c 'echo "unset DBUS_SESSION_BUS_ADDRESS" > ~/.xsession'
+          sudo -u aban bash -c 'echo "unset XDG_RUNTIME_DIR" >> ~/.xsession'
+          sudo -u aban bash -c 'echo "exec startxfce4" >> ~/.xsession'
+
           sudo chmod +x /home/aban/.xsession
 
-          # تعديل startwm.sh لإجبار XFCE
-          sudo sed -i 's/^test -x/#test -x/' /etc/xrdp/startwm.sh
-          sudo sed -i 's/^exec/#exec/' /etc/xrdp/startwm.sh
-          echo "startxfce4" | sudo tee -a /etc/xrdp/startwm.sh
-
+          # ضبط XRDP
+          sudo sed -i 's/3389/3389/' /etc/xrdp/xrdp.ini
           sudo systemctl enable xrdp
           sudo systemctl restart xrdp
 
@@ -39,7 +41,7 @@ jobs:
 
       - name: Show Connection Info
         run: |
-          echo "---- RDP READY ----"
+          echo "===== RDP READY ====="
           tailscale ip -4
           echo "User: aban"
           sleep 21600
