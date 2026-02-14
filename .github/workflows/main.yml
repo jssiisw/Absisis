@@ -1,51 +1,36 @@
-name: Kali-Ultimate-Solution-v3
+name: Linux-Tailscale-RDP
 
-on: 
-  workflow_dispatch:
+on: workflow_dispatch
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Install Tailscale
-        run: |
-          curl -fsSL https://tailscale.com/install.sh | sh
-          
-      - name: Connect to Tailscale
-        run: |
-          # تأكد أن المفتاح في Secrets هو Auth Key يبدأ بـ tskey-auth
-          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
-          
-      - name: Setup User & Fix Desktop Session
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Install Desktop Environment and XRDP
         run: |
           sudo apt update
-          # تثبيت الواجهة مع حزم الاستقرار الأساسية للـ RDP
-          sudo DEBIAN_FRONTEND=noninteractive apt install -y xfce4 xfce4-goodies xrdp dbus-x11 x11-xserver-utils
-          
-          # إنشاء المستخدم وتحديد كلمة السر
-          sudo useradd -m -s /bin/bash aban || true
-          echo "aban:abanAWAD500" | sudo chpasswd
-          sudo adduser aban sudo || true
-          
-          # الحل النهائي لمشكلة الفشل في الجلسة (Failsafe)
-          # نقوم بمسح أي إعدادات قديمة وإجبار المستخدم على تشغيل xfce
-          sudo rm -f /home/aban/.xsession
-          sudo -u aban bash -c 'echo "exec startxfce4" > ~/.xsession'
-          sudo chmod +x /home/aban/.xsession
-          
-          # تعديل ملف تشغيل الـ RDP ليتجاوز الأخطاء ويشغل الواجهة مباشرة
-          sudo sed -i 's/^. \/etc\/X11\/Xsession/#. \/etc\/X11\/Xsession/g' /etc/xrdp/startwm.sh
-          echo "exec startxfce4" | sudo tee -a /etc/xrdp/startwm.sh
-          
-          # إعادة تشغيل الخدمات
-          sudo systemctl enable xrdp
+          sudo apt install -y xfce4 xfce4-goodies xrdp
+          echo "xfce4-session" > ~/.xsession
           sudo systemctl restart xrdp
 
-      - name: Keep Alive (6 Hours)
+      - name: Configure User Account
         run: |
-          echo "==== السيرفر جاهز يا وحش ===="
-          echo "IP Address: $(tailscale ip -4)"
-          echo "User: aban | Pass: abanAWAD500"
-          echo "============================"
-          # السيرفر سيبقى يعمل لمدة 6 ساعات متواصلة
+          echo "runneradmin:P@ssw0rd123" | sudo chpasswd
+          sudo adduser runneradmin ssl-cert
+
+      - name: Deploy Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Fetch Instance IP and Keep Alive
+        run: |
+          echo "--- Connection Established ---"
+          echo "Instance Internal IP:"
+          tailscale ip -4
+          echo "Username: runneradmin"
+          echo "Password: P@ssw0rd123"
           sleep 21600
