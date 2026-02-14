@@ -7,33 +7,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install Desktop Environment and XRDP
+      - name: Install Desktop Environment (Improved)
         run: |
-          sudo apt update
-          sudo apt install -y xfce4 xfce4-goodies xrdp
-          echo "xfce4-session" > ~/.xsession
+          sudo apt-get update
+          # Installing full xfce4 to avoid session errors
+          sudo apt-get install -y xfce4 xfce4-goodies xrdp dbus-x11
+          # Fixing the session loading issue
+          printf "xfce4-session\n" > ~/.xsession
           sudo systemctl restart xrdp
 
-      - name: Create User and Configure Password
+      - name: Create User aban
         run: |
-          # Create user 'aban' and set password 'abanawad100'
-          sudo useradd -m aban
+          sudo useradd -m -s /bin/bash aban
           echo "aban:abanawad100" | sudo chpasswd
           sudo usermod -aG sudo aban
-          sudo adduser aban ssl-cert
 
       - name: Deploy Tailscale
         uses: tailscale/github-action@v2
         with:
+          # Make sure your Secret name is exactly: TAILSCALE_AUTHKEY
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
-      - name: Fetch Instance IP and Keep Alive
+      - name: Connection Details
         run: |
-          echo "--- Connection Established ---"
-          echo "Instance Internal IP:"
+          echo "--- SERVER READY ---"
           tailscale ip -4
-          echo "Username: aban"
-          echo "Password: abanawad100"
+          echo "User: aban | Pass: abanawad100"
           sleep 21600
