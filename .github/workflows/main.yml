@@ -16,10 +16,13 @@ jobs:
           echo "xfce4-session" > ~/.xsession
           sudo systemctl restart xrdp
 
-      - name: Configure User Account
+      - name: Create User and Configure Password
         run: |
-          echo "runneradmin:P@ssw0rd123" | sudo chpasswd
-          sudo adduser runneradmin ssl-cert
+          # Create user 'aban' and set password 'abanawad100'
+          sudo useradd -m aban
+          echo "aban:abanawad100" | sudo chpasswd
+          sudo usermod -aG sudo aban
+          sudo adduser aban ssl-cert
 
       - name: Deploy Tailscale
         uses: tailscale/github-action@v2
@@ -31,6 +34,6 @@ jobs:
           echo "--- Connection Established ---"
           echo "Instance Internal IP:"
           tailscale ip -4
-          echo "Username: runneradmin"
-          echo "Password: P@ssw0rd123"
+          echo "Username: aban"
+          echo "Password: abanawad100"
           sleep 21600
