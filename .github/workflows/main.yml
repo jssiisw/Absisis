@@ -3,7 +3,7 @@ name: Ubuntu + Tailscale + RDP + User aban
 on: [workflow_dispatch]
 
 jobs:
-  setup-tailscale-rdp:
+  setup-rdp:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     
@@ -16,26 +16,34 @@ jobs:
 
       - name: Get Tailscale IP
         run: |
-          echo ""
           echo "=========================================="
-          echo "🌐 TAILSCALE CONNECTION INFO"
-          echo "=========================================="
-          echo "Tailscale IPv4: $(tailscale ip -4)"
-          echo "Tailscale IPv6: $(tailscale ip -6)"
-          echo ""
-          echo "🖥️  RDP CONNECTION:"
-          echo "IP: $(tailscale ip -4)"
-          echo "Port: 3389"
-          echo "Username: aban"
-          echo "Password: aban"
+          echo "🌐 Tailscale IP: $(tailscale ip -4)"
           echo "=========================================="
 
-      - name: Install Desktop & XRDP
+      - name: Install Desktop Environment
         run: |
+          export DEBIAN_FRONTEND=noninteractive
           sudo apt-get update -y
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y xfce4 xfce4-goodies xrdp
-          sudo systemctl enable xrdp
-          sudo systemctl start xrdp
+          
+          # تثبيت XFCE كامل
+          sudo apt-get install -y xfce4 xfce4-goodies xfce4-session
+          
+          # تثبيت D-Bus (مهم جداً)
+          sudo apt-get install -y dbus-x11
+          
+          echo "✅ Desktop installed"
+
+      - name: Install & Configure XRDP
+        run: |
+          sudo apt-get install -y xrdp
+          
+          # إعداد XRDP ليستخدم XFCE
+          echo "xfce4-session" | sudo tee /etc/skel/.xsession
+          
+          # إعادة تشغيل XRDP
+          sudo systemctl restart xrdp
+          
+          echo "✅ XRDP configured"
 
       - name: Create User 'aban'
         run: |
@@ -45,38 +53,35 @@ jobs:
           sudo usermod -aG ssl-cert aban
           
           # إعداد XFCE للمستخدم
+          sudo mkdir -p /home/aban/.config/xfce4
           echo "xfce4-session" | sudo tee /home/aban/.xsession
-          sudo chown aban:aban /home/aban/.xsession
-          
-          # إعداد XRDP
-          sudo sed -i 's/port=vsock/port=ask/g' /etc/xrdp/xrdp.ini
-          sudo systemctl restart xrdp
+          sudo chown -R aban:aban /home/aban
           
           echo "✅ User 'aban' ready"
 
-      - name: Install CyberSec Tools
+      - name: Fix D-Bus & Permissions
         run: |
-          sudo apt-get install -y nmap sqlmap nikto dirb gobuster
-          sudo apt-get install -y john hashcat hydra
-          sudo apt-get install -y netcat-traditional tcpdump tshark
-          sudo apt-get install -y binwalk steghide exiftool
+          # تشغيل D-Bus
+          sudo systemctl start dbus || true
+          
+          # إعطاء صلاحيات للـ aban
+          sudo usermod -aG video aban
+          
+          echo "✅ Permissions fixed"
 
-      - name: Show Final Info
+      - name: Show Connection Info
         run: |
           echo ""
           echo "=========================================="
           echo "✅ READY TO CONNECT"
           echo "=========================================="
-          echo "Tailscale IP: $(tailscale ip -4)"
-          echo "RDP: $(tailscale ip -4):3389"
-          echo "User: aban"
-          echo "Pass: aban"
-          echo ""
-          echo "📱 Connect from any Tailscale device"
+          echo "IP: $(tailscale ip -4)"
+          echo "Port: 3389"
+          echo "Username: aban"
+          echo "Password: aban"
           echo "=========================================="
-          tailscale status
 
       - name: Keep Alive
         run: |
-          echo "🟢 Running... Press Cancel to stop"
+          echo "🟢 RDP Server running..."
           sleep 21600
