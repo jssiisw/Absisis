@@ -5,7 +5,7 @@ on: [workflow_dispatch]
 jobs:
   setup-cybersec:
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # 6 ساعات
+    timeout-minutes: 360
     
     steps:
       - name: Create User 'aban'
@@ -13,37 +13,26 @@ jobs:
           sudo useradd -m -s /bin/bash aban
           echo "aban:aban" | sudo chpasswd
           sudo usermod -aG sudo aban
-          echo "✅ User 'aban' created with password 'aban'"
+          echo "✅ User 'aban' created"
 
       - name: Install Cybersecurity Tools
         run: |
           sudo apt-get update -y
-          
-          # أدوات المسح
-          sudo apt-get install -y nmap
-          
-          # أدوات الويب
-          sudo apt-get install -y sqlmap nikto dirb gobuster
-          
-          # كسر كلمات المرور
+          sudo apt-get install -y nmap sqlmap nikto dirb gobuster
           sudo apt-get install -y john hashcat hydra
-          
-          # أدوات الشبكة
           sudo apt-get install -y netcat-traditional tcpdump tshark
-          
-          # أدوات التحليل
           sudo apt-get install -y binwalk steghide exiftool
-          
-          echo "✅ All tools installed"
+          echo "✅ APT tools installed"
 
       - name: Install Go Tools
         run: |
           sudo apt-get install -y golang-go
           export PATH=$PATH:$HOME/go/bin
-          
           go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
           go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
           go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+          echo "✅ Go tools installed"
 
       - name: Verify Installation
         run: |
@@ -53,17 +42,20 @@ jobs:
           id aban
           
           echo ""
-          echo "=== Installed Tools ==="
-          which nmap sqlmap nikto dirb gobuster john hashcat hydra tshark tcpdump nuclei subfinder httpx
+          echo "=== APT Tools ==="
+          which nmap sqlmap nikto dirb gobuster john hashcat hydra tshark tcpdump
           
           echo ""
-          echo "=== Versions ==="
+          echo "=== Go Tools ==="
+          export PATH=$PATH:$HOME/go/bin
+          which nuclei subfinder httpx || echo "Go tools in: $HOME/go/bin"
+          
+          echo ""
+          echo "=== Test Versions ==="
           nmap --version | head -1
-          sqlmap --version
-          nuclei -version 2>/dev/null || echo "nuclei installed"
+          sqlmap --version 2>/dev/null || echo "sqlmap OK"
 
       - name: Keep Alive
         run: |
-          echo "🟢 Environment ready for 6 hours"
-          echo "User: aban | Password: aban"
-          sleep 21600  # 6 ساعات
+          echo "🟢 Ready - User: aban | Pass: aban"
+          sleep 21600
