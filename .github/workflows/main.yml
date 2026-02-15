@@ -1,61 +1,82 @@
-name: Ubuntu + User aban + CyberSec Tools
+name: Ubuntu + Tailscale + RDP + User aban
 
 on: [workflow_dispatch]
 
 jobs:
-  setup-cybersec:
+  setup-tailscale-rdp:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     
     steps:
+      - name: Install Tailscale
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+          sudo tailscale up --authkey ${{ secrets.TAILSCALE_AUTH_KEY }} --accept-routes --ssh
+          echo "✅ Tailscale connected"
+
+      - name: Get Tailscale IP
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "🌐 TAILSCALE CONNECTION INFO"
+          echo "=========================================="
+          echo "Tailscale IPv4: $(tailscale ip -4)"
+          echo "Tailscale IPv6: $(tailscale ip -6)"
+          echo ""
+          echo "🖥️  RDP CONNECTION:"
+          echo "IP: $(tailscale ip -4)"
+          echo "Port: 3389"
+          echo "Username: aban"
+          echo "Password: aban"
+          echo "=========================================="
+
+      - name: Install Desktop & XRDP
+        run: |
+          sudo apt-get update -y
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y xfce4 xfce4-goodies xrdp
+          sudo systemctl enable xrdp
+          sudo systemctl start xrdp
+
       - name: Create User 'aban'
         run: |
           sudo useradd -m -s /bin/bash aban
           echo "aban:aban" | sudo chpasswd
           sudo usermod -aG sudo aban
-          echo "✅ User 'aban' created"
+          sudo usermod -aG ssl-cert aban
+          
+          # إعداد XFCE للمستخدم
+          echo "xfce4-session" | sudo tee /home/aban/.xsession
+          sudo chown aban:aban /home/aban/.xsession
+          
+          # إعداد XRDP
+          sudo sed -i 's/port=vsock/port=ask/g' /etc/xrdp/xrdp.ini
+          sudo systemctl restart xrdp
+          
+          echo "✅ User 'aban' ready"
 
-      - name: Install Cybersecurity Tools
+      - name: Install CyberSec Tools
         run: |
-          sudo apt-get update -y
           sudo apt-get install -y nmap sqlmap nikto dirb gobuster
           sudo apt-get install -y john hashcat hydra
           sudo apt-get install -y netcat-traditional tcpdump tshark
           sudo apt-get install -y binwalk steghide exiftool
-          echo "✅ APT tools installed"
 
-      - name: Install Go Tools
+      - name: Show Final Info
         run: |
-          sudo apt-get install -y golang-go
-          export PATH=$PATH:$HOME/go/bin
-          go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
-          go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
-          go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
-          echo "$HOME/go/bin" >> $GITHUB_PATH
-          echo "✅ Go tools installed"
-
-      - name: Verify Installation
-        run: |
-          echo "=== User Info ==="
-          echo "Username: aban"
-          echo "Password: aban"
-          id aban
-          
           echo ""
-          echo "=== APT Tools ==="
-          which nmap sqlmap nikto dirb gobuster john hashcat hydra tshark tcpdump
-          
+          echo "=========================================="
+          echo "✅ READY TO CONNECT"
+          echo "=========================================="
+          echo "Tailscale IP: $(tailscale ip -4)"
+          echo "RDP: $(tailscale ip -4):3389"
+          echo "User: aban"
+          echo "Pass: aban"
           echo ""
-          echo "=== Go Tools ==="
-          export PATH=$PATH:$HOME/go/bin
-          which nuclei subfinder httpx || echo "Go tools in: $HOME/go/bin"
-          
-          echo ""
-          echo "=== Test Versions ==="
-          nmap --version | head -1
-          sqlmap --version 2>/dev/null || echo "sqlmap OK"
+          echo "📱 Connect from any Tailscale device"
+          echo "=========================================="
+          tailscale status
 
       - name: Keep Alive
         run: |
-          echo "🟢 Ready - User: aban | Pass: aban"
+          echo "🟢 Running... Press Cancel to stop"
           sleep 21600
