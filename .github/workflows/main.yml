@@ -5,105 +5,65 @@ on: [workflow_dispatch]
 jobs:
   setup-cybersec:
     runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 ساعات
     
     steps:
       - name: Create User 'aban'
         run: |
-          # إنشاء المستخدم مع كلمة المرور
           sudo useradd -m -s /bin/bash aban
           echo "aban:aban" | sudo chpasswd
-          
-          # إعطاء صلاحيات sudo
           sudo usermod -aG sudo aban
-          
           echo "✅ User 'aban' created with password 'aban'"
-          id aban
 
       - name: Install Cybersecurity Tools
         run: |
           sudo apt-get update -y
           
-          # === أدوات المسح والفحص ===
-          sudo apt-get install -y nmap masscan
+          # أدوات المسح
+          sudo apt-get install -y nmap
           
-          # === أدوات الويب ===
-          sudo apt-get install -y sqlmap nikto dirb gobuster wfuzz
+          # أدوات الويب
+          sudo apt-get install -y sqlmap nikto dirb gobuster
           
-          # === أدوات كسر كلمات المرور ===
+          # كسر كلمات المرور
           sudo apt-get install -y john hashcat hydra
           
-          # === أدوات الشبكة ===
-          sudo apt-get install -y netcat-traditional nmap wireshark-cli tcpdump
+          # أدوات الشبكة
+          sudo apt-get install -y netcat-traditional tcpdump tshark
           
-          # === أدوات الاستغلال ===
-          sudo apt-get install -y exploitdb
-          
-          # === أدوات أخرى ===
+          # أدوات التحليل
           sudo apt-get install -y binwalk steghide exiftool
           
-          echo "✅ Cybersecurity tools installed"
+          echo "✅ All tools installed"
 
-      - name: Install Additional Tools (Binary)
+      - name: Install Go Tools
         run: |
-          # تثبيت Go لبعض الأدوات
           sudo apt-get install -y golang-go
-          export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin
+          export PATH=$PATH:$HOME/go/bin
           
-          # تثبيت Nuclei
           go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
-          
-          # تثبيت Subfinder
           go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
-          
-          # تثبيت httpx
           go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
-          
-          # تثبيت naabu
-          go install -v github.com/projectdiscovery/naabu/v2/cmd/naabu@latest
-          
-          echo "✅ Go tools installed"
-
-      - name: Install Metasploit Framework
-        run: |
-          # تثبيت Metasploit
-          curl https://raw.githubusercontent.com/rapid7/metasploit-omnibus/master/config/templates/metasploit-framework-wrappers/msfupdate.erb > msfinstall
-          chmod 755 msfinstall
-          ./msfinstall
-          rm msfinstall
-          echo "✅ Metasploit installed"
 
       - name: Verify Installation
         run: |
-          echo "=== معلومات المستخدم ==="
+          echo "=== User Info ==="
           echo "Username: aban"
           echo "Password: aban"
           id aban
           
           echo ""
-          echo "=== الأدوات المثبتة ==="
-          echo "Nmap: $(which nmap)"
-          echo "SQLMap: $(which sqlmap)"
-          echo "Nikto: $(which nikto)"
-          echo "John: $(which john)"
-          echo "Hashcat: $(which hashcat)"
-          echo "Hydra: $(which hydra)"
-          echo "Metasploit: $(which msfconsole)"
-          echo "Nuclei: $(which nuclei)"
+          echo "=== Installed Tools ==="
+          which nmap sqlmap nikto dirb gobuster john hashcat hydra tshark tcpdump nuclei subfinder httpx
           
           echo ""
-          echo "=== إصدار Nmap ==="
-          nmap --version | head -2
+          echo "=== Versions ==="
+          nmap --version | head -1
+          sqlmap --version
+          nuclei -version 2>/dev/null || echo "nuclei installed"
 
-      - name: Setup Working Directory
+      - name: Keep Alive
         run: |
-          sudo mkdir -p /home/aban/tools
-          sudo chown -R aban:aban /home/aban
-          echo "✅ Tools directory ready at /home/aban/tools"
-
-      - name: Keep Alive (للتجربة)
-        run: |
-          echo "🟢 البيئة جاهزة للاستخدام"
-          echo "يمكنك الاتصال عبر:"
-          echo "ssh aban@<ip> (إذا كان SSH متاح)"
-          echo "أو استخدام su - aban"
-          sleep 300  # يبقى يعمل 5 دقائق للتجربة
+          echo "🟢 Environment ready for 6 hours"
+          echo "User: aban | Password: aban"
+          sleep 21600  # 6 ساعات
